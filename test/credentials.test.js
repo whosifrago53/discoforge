@@ -23,6 +23,16 @@ r = p('restic\nQgA0PJo4DmXhS3BlaXBa7+RXSIv+ME7UGFxxMDxtDQU=\npassword server bac
 console.log(r.text);
 assert.equal(r.text, '> ### Credentials Restic\n> \n> **Api Key:** QgA0PJo4DmXhS3BlaXBa7+RXSIv+ME7UGFxxMDxtDQU=');
 
+r = p('netcup server per v3   se serve ssh ditemi\nIP address: 62.12.122.122/22, 2a03:4000:18:1359:78d3:beff:fef7:2d1f\nUsername: root\nRoot password: xI1passwordj');
+console.log(r.text);
+assert.equal(r.text, '> ### Credentials 62.12.122.122 server\n> **IP:** 62.12.122.122\n> **Username:** root\n> **Password:** xI1passwordj');
+
+r = p('credenziali windows server per compilare\n159.159.16.200\nq~aaasefT=}8Flongpassword759j');
+console.log(r.text);
+assert.equal(r.text, '> ### Credentials 159.159.16.200 server\n> **IP:** 159.159.16.200\n> **Username:** Administrator\n> **Password:** q~aaasefT=}8Flongpassword759j');
+
+assert.equal(p('server 10.0.0.1 password dimenticata?').status, 'incomplete');
+assert.equal(p('il server 10.0.0.1 è giù').status, 'none');
 assert.equal(p("Ecco l'api key bro: kc_live_...key").status, 'incomplete');
 assert.equal(p('ciao ragazzi come va').status, 'none');
 assert.equal(p('').status, 'none');

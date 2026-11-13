@@ -1,4 +1,4 @@
-// ℹ️ task settings panel: priority, due date, assignees, categories.
+// ⚙️ task settings panel: priority, due date, assignees, categories.
 const {
   ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, UserSelectMenuBuilder,
   ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags,
@@ -64,7 +64,21 @@ function panelPayload(t, ownerId, note = '') {
   };
 }
 
-/** Called when someone reacts with ℹ️. */
+/** Called when someone reacts with 📝: offers an Edit button (a modal needs an interaction, reactions have none). */
+async function openEditPrompt(channel, task, user) {
+  const id = (a) => `ti|${a}|${task.id}|${user.id}`;
+  const msg = await channel.send({
+    content: `<@${user.id}> **Edit task #${task.id}** — click the button to change its text.`,
+    components: [new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(id('editbtn')).setLabel('Edit text').setEmoji('✏️').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(id('close')).setLabel('Close').setStyle(ButtonStyle.Danger),
+    )],
+    allowedMentions: { users: [user.id] },
+  });
+  setTimeout(() => msg.delete().catch(() => {}), PANEL_TTL_MS).unref();
+}
+
+/** Called when someone reacts with ⚙️. */
 async function openPanel(channel, task, user) {
   const msg = await channel.send(panelPayload(task, user.id));
   setTimeout(() => msg.delete().catch(() => {}), PANEL_TTL_MS).unref();
@@ -86,7 +100,7 @@ function parseDate(input) {
 async function handlePanel(i) {
   const [, action, taskId, owner] = i.customId.split('|');
   if (i.user.id !== owner) {
-    return i.reply({ content: 'This panel belongs to someone else. React with ℹ️ on the task to open your own.', flags: MessageFlags.Ephemeral });
+    return i.reply({ content: 'This panel belongs to someone else. React with the matching emoji on the task to open your own.', flags: MessageFlags.Ephemeral });
   }
   let t = store.getTask(taskId);
   if (!t) return i.reply({ content: 'Task no longer exists.', flags: MessageFlags.Ephemeral });
@@ -104,7 +118,24 @@ async function handlePanel(i) {
     );
   }
 
+  if (action === 'editbtn') {
+    return i.showModal(
+      new ModalBuilder().setCustomId(`ti|edit|${t.id}|${owner}`).setTitle(`Edit task #${t.id}`).addComponents(
+        new ActionRowBuilder().addComponents(
+          new TextInputBuilder().setCustomId('text').setLabel('Task text').setStyle(TextInputStyle.Paragraph)
+            .setRequired(true).setMaxLength(4000).setValue(T.trunc(t.description || t.title, 4000)),
+        ),
+      ),
+    );
+  }
+
   let note = '';
+  if (action === 'edit') {
+    const text = i.fields.getTextInputValue('text').trim();
+    if (!text) return i.reply({ content: '❌ The task text cannot be empty.', flags: MessageFlags.Ephemeral });
+    const title = text.split(/\r?\n/)[0].replace(/^\s*-\s*/, '').trim().slice(0, 200) || text.slice(0, 200);
+    store.updateTask(t.id, { description: text, title });
+  }
   if (action === 'due') {
     const date = parseDate(i.fields.getTextInputValue('date'));
     if (!date) return i.reply({ content: '❌ Invalid date. Use `YYYY-MM-DD` or `DD/MM/YYYY`.', flags: MessageFlags.Ephemeral });
@@ -132,8 +163,9 @@ async function handlePanel(i) {
   }
 
   await T.refresh(i.client, t.id);
+  if (action === 'edit') return i.message.delete().catch(() => {});
   t = store.getTask(t.id);
   await i.editReply(panelPayload(t, owner, note));
 }
 
-module.exports = { openPanel, handlePanel, parseDate };
+module.exports = { openPanel, openEditPrompt, handlePanel, parseDate };

@@ -80,6 +80,12 @@ client.on('messageCreate', async (message) => {
   }
 });
 
+// reaction (variation selector stripped) -> action
+const ACTIONS = Object.fromEntries(Object.entries({
+  '⏳': 'doing', '✅': 'done', '❌': 'discard', '🐛': 'bug', '📌': 'pin',
+  '📝': 'edit', '👁️': 'details', '⚙️': 'panel', '🗑️': 'delete',
+}).map(([emoji, action]) => [T.normEmoji(emoji), action]));
+
 async function onReaction(reaction, user) {
   if (user.bot) return;
   if (reaction.partial) await reaction.fetch().catch(() => {});
@@ -97,18 +103,20 @@ async function onReaction(reaction, user) {
 
   const t = task;
   const toggle = (status) => (t.status === status ? 'doing' : status);
-  switch (key) {
-    case '✅': store.updateTask(t.id, { status: toggle('done') }); break;
-    case '❌': store.updateTask(t.id, { status: toggle('discarded') }); break;
-    case '⏳': store.updateTask(t.id, { status: 'doing' }); break;
-    case '📝': store.updateTask(t.id, { details_open: t.details_open ? 0 : 1 }); break;
-    case '🐛': store.updateTask(t.id, { bug: t.bug ? 0 : 1 }); break;
-    case '📌': store.updateTask(t.id, { important: t.important ? 0 : 1 }); break;
-    case 'ℹ': return panel.openPanel(message.channel, t, user);
-    case '🗑': return T.deleteTask(client, t.id);
+  const action = ACTIONS[key];
+  switch (action) {
+    case 'done': store.updateTask(t.id, { status: toggle('done') }); break;
+    case 'discard': store.updateTask(t.id, { status: toggle('discarded') }); break;
+    case 'doing': store.updateTask(t.id, { status: 'doing' }); break;
+    case 'details': store.updateTask(t.id, { details_open: t.details_open ? 0 : 1 }); break;
+    case 'bug': store.updateTask(t.id, { bug: t.bug ? 0 : 1 }); break;
+    case 'pin': store.updateTask(t.id, { important: t.important ? 0 : 1 }); break;
+    case 'edit': return panel.openEditPrompt(message.channel, t, user);
+    case 'panel': return panel.openPanel(message.channel, t, user);
+    case 'delete': return T.deleteTask(client, t.id);
   }
   await T.refresh(client, t.id);
-  if (key === '📌') await T.syncPin(client, t.id);
+  if (action === 'pin') await T.syncPin(client, t.id);
 }
 
 client.on('messageReactionAdd', (reaction, user) =>
@@ -131,5 +139,5 @@ client.on('interactionCreate', async (i) => {
   }
 });
 
-client.once('clientReady', () => console.log(`DiscoForge online as ${client.user.tag}`));
+client.once('clientReady', () => console.log(`DiscoForge online as ${client.user.tag} (task format: ${config.taskFormat})`));
 client.login(config.token);

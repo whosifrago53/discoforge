@@ -21,29 +21,30 @@ const PAGES = [
       '• The whole message becomes the task text (its first line is the short name shown in `/category_info`).\n' +
       '• Attach an **image** → shown inside the task. Other **files** are re-attached to it.\n' +
       '• Add `#other-category` mentions to file it under **subcategories** too, and `@user` mentions to **assign** it, e.g. `- Fix login #payments @anna`.\n' +
-      '• The bot deletes your message and posts a task card (purple = in progress).\n' +
+      '• The bot deletes your message and posts a task card (purple = in progress), or a lightweight text message if the server admin set `TASK_FORMAT=plain`. Reactions and pop-ups work the same in both.\n' +
       '• Anything not starting with `- ` (or file-only posts) is rejected.',
   },
   {
     label: 'Reactions', emoji: '🎛️',
     title: 'Task reactions',
     text:
-      '✅ **Done** → green (click again to reopen)\n' +
       '⏳ **Doing** → purple (default)\n' +
+      '✅ **Done** → green (click again to reopen)\n' +
       '❌ **Discarded** → grey (click again to reopen)\n' +
-      '🗑️ **Delete** → removes the task (every copy) and its database record. No confirmation!\n' +
       '🐛 **Bug** → toggle: orange-red card, *🐛 BUG* header and bug icon\n' +
       '📌 **Important** → toggle: gold card, *⚠️ IMPORTANT TASK* header, and the task is pinned (in the assignee channel(s) if it has any, else the category channel(s))\n' +
-      '📝 **Show/hide data** → status, priority, due date, categories and assignees are hidden by default; toggle with 📝 (anyone)\n' +
-      'ℹ️ **Details panel** → priority, due date, assignees, categories\n\n' +
+      '📝 **Edit** → opens an *Edit text* button; change the task text in a pop-up (all copies update)\n' +
+      '👁️ **Show/hide data** → status, priority, due date, categories and assignees are hidden by default; toggle with 👁️ (anyone)\n' +
+      '⚙️ **Settings panel** → priority, due date, assignees, subcategories\n' +
+      '🗑️ **Delete** → removes the task (every copy) and its database record. No confirmation!\n\n' +
       'Reactions work on **any copy** of a task and update all of them. Your reaction is removed once applied, so the buttons stay reusable.',
   },
   {
-    label: 'Details panel (ℹ️)', emoji: 'ℹ️',
-    title: 'ℹ️ Details panel',
+    label: 'Settings panel (⚙️)', emoji: '⚙️',
+    title: '⚙️ Settings panel',
     text:
       '**Priority:** 🔴 CRITICAL · 🟠 HIGH · 🟡 MEDIUM · 🟢 LOW\n' +
-      '**Due date:** `YYYY-MM-DD` or `DD/MM/YYYY`. Reopen ℹ️ anytime to **extend/change/clear** it.\n\n' +
+      '**Due date:** `YYYY-MM-DD` or `DD/MM/YYYY`. Reopen ⚙️ anytime to **extend/change/clear** it.\n\n' +
       '**Assignees** → pick **one or more** users. The task is copied into each user\'s assignee channel (users without one are saved on the task only).\n' +
       '**Subcategories** → pick **one or more** other category channels. The task is copied into each of them.\n' +
       'The channel the task was created in always keeps its copy. Deselect a user/category to remove its copy.\n\n' +
@@ -68,9 +69,12 @@ const PAGES = [
     text:
       '**Login:** website + email/username + password (or an API key)\n```\nhttps://m365.cloud.microsoft/\nuser@mail.com\nmyPassw0rd\n```\n' +
       '**Named keys:** a name, then one key per line, optional description after it\n```\nOpenAI\n123504-b6d4...  Access Token\nAI-123504-9b3f...  AI KEY\n```\n' +
+      '**Server:** IP address + password (+ optional username)\n```\nwindows server\n159.159.16.200\nmyPassw0rd\n```\n' +
       'The bot deletes your message and reposts it formatted:\n' +
       '> ### Credentials OpenAI\n> \n> **Api Key - Access Token:** 123504-b6d4...\n> **Api Key - AI KEY:** AI-123504-9b3f...\n\n' +
+      '> ### Credentials 159.159.16.200 server\n> **IP:** 159.159.16.200\n> **Username:** Administrator\n> **Password:** myPassw0rd\n\n' +
       '• A login needs a **website** + (**email/username + password**) or an **API key**.\n' +
+      '• A server needs an **IP** + **password**; the username defaults to `Administrator`.\n' +
       '• Missing info → you get a reminder.\n' +
       '• Anything else is rejected.',
   },

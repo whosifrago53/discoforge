@@ -1,5 +1,6 @@
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const store = require('./db');
+const config = require('./config');
 
 const COLORS = { doing: 0x9b59b6, done: 0x2ecc71, discarded: 0x646261, important: 0xe4bc1b, bug: 0xe4431b };
 const BUG_THUMB = 'https://cdn3d.iconscout.com/3d/premium/thumb/bug-3d-icon-png-download-4037826.png';
@@ -10,7 +11,7 @@ const PRIORITIES = {
   medium: { emoji: '🟡', label: 'MEDIUM', rank: 2 },
   low: { emoji: '🟢', label: 'LOW', rank: 3 },
 };
-const REACTIONS = ['✅', '⏳', '❌', '🗑️', '🐛', '📌', '📝', 'ℹ️'];
+const REACTIONS = ['⏳', '✅', '❌', '🐛', '📌', '📝', '👁️', '⚙️', '🗑️'];
 const normEmoji = (e) => (e || '').replace(/️/g, '');
 
 const trunc = (s, n) => (s && s.length > n ? s.slice(0, n - 1) + '…' : s || '');
@@ -61,6 +62,49 @@ function buildEmbed(t) {
   return embed;
 }
 
+const NO_MENTIONS = { parse: [] };
+const DONE_MARK = { done: '✅', discarded: '❌' };
+
+/** TASK_FORMAT=plain: a lightweight text message instead of an embed card. */
+function buildPlainContent(t) {
+  const text = t.description || t.title || '';
+  const mark = DONE_MARK[t.status];
+  // done/discarded swap the leading "- " for ✅ / ❌
+  const body = mark ? `${mark} ${text.replace(/^\s*-?\s*/, '')}` : text;
+
+  const lines = [];
+  if (t.important) lines.push('**[IMPORTANT] ⚠️ **');
+  if (t.bug) lines.push('**[BUG] 🐛 **');
+  lines.push(body);
+  if (t.details_open) {
+    const list = (items, fmt) => (items?.length ? items.map(fmt).join(' ') : '-');
+    const prio = t.priority ? `${PRIORITIES[t.priority].emoji} ${PRIORITIES[t.priority].label}` : '-';
+    lines.push(
+      '',
+      '**[Data]**',
+      `**Status:** ${STATUS_LABEL[t.status]}`,
+      `**Priority:** ${prio}`,
+      `**Due date:** ${t.due_date ? dueText(t) : '-'}`,
+      '',
+      '**[Details]**',
+      `**Category:** ${list(t.categories, (c) => `<#${c}>`)}`,
+      `**Assigned to:** ${list(t.assignees, (u) => `<@${u}>`)}`,
+      `**Assigned by:** ${t.author_name || 'Unknown'}`, // plain name, never a tag
+    );
+  }
+  return trunc(lines.join('\n'), 2000);
+}
+
+/** Discord message payload for a task in the configured TASK_FORMAT. forEdit also clears the other format. */
+function buildPayload(t, forEdit = false) {
+  if (config.taskFormat === 'plain') {
+    return { content: buildPlainContent(t), embeds: [], allowedMentions: NO_MENTIONS };
+  }
+  return forEdit
+    ? { content: null, embeds: [buildEmbed(t)], allowedMentions: NO_MENTIONS }
+    : { embeds: [buildEmbed(t)], allowedMentions: NO_MENTIONS };
+}
+
 async function fetchMsg(client, channelId, messageId) {
   if (!channelId || !messageId) return null;
   const ch = await client.channels.fetch(channelId).catch(() => null);
@@ -90,7 +134,7 @@ async function addReactions(msg) {
 }
 
 async function postTask(channel, task, files) {
-  const msg = await channel.send({ embeds: [buildEmbed(task)], files });
+  const msg = await channel.send({ ...buildPayload(task), files });
   addReactions(msg); // fire & forget; ordering preserved internally
   return msg;
 }
@@ -141,8 +185,8 @@ async function fetchTaskMsgs(client, t) {
 async function refresh(client, id) {
   const t = store.getTask(id);
   if (!t) return;
-  const embed = buildEmbed(t);
-  for (const { msg } of await fetchTaskMsgs(client, t)) await msg.edit({ embeds: [embed] }).catch(() => {});
+  const payload = buildPayload(t, true);
+  for (const { msg } of await fetchTaskMsgs(client, t)) await msg.edit(payload).catch(() => {});
 }
 
 /** Pin in the assignee channel(s) when the task has any, otherwise in the category channel(s). */
@@ -214,6 +258,6 @@ async function deleteTask(client, id) {
 }
 
 module.exports = {
-  PRIORITIES, REACTIONS, normEmoji, trunc, dueTs, todayIso, isOverdue, buildEmbed,
+  PRIORITIES, REACTIONS, normEmoji, trunc, dueTs, todayIso, isOverdue, buildEmbed, buildPlainContent,
   createTask, refresh, syncPin, syncMirrors, deleteTask, fetchMsg,
 };

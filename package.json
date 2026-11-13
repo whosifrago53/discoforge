@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "deploy": "node src/deploy-commands.js",
-    "test": "node test/credentials.test.js && node test/sync.test.js"
+    "test": "node test/credentials.test.js && node test/sync.test.js && node test/plain.test.js"
   },
   "engines": { "node": ">=20" },
   "dependencies": {

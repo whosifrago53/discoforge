@@ -24,7 +24,7 @@
 ## ✨ What it does
 
 - **📋 Task boards in plain chat.** Type `- Fix user dashboard authentication` in a category channel. The bot swaps it for a clean task card. Mention `#other-category` channels (subcategories) and `@users` (assignees) in the same message to file and assign it right away.
-- **🎛️ Reaction controls.** ✅ done · ⏳ doing · ❌ discarded · 🗑️ delete · 🐛 bug · 📌 important (auto-pinned) · 📝 show/hide details · ℹ️ settings panel.
+- **🎛️ Reaction controls.** ⏳ doing · ✅ done · ❌ discarded · 🐛 bug · 📌 important (auto-pinned) · 📝 edit the task text · 👁️ show/hide details · ⚙️ settings panel · 🗑️ delete.
 - **👥 Many assignees, many categories.** Set priority (🔴🟠🟡🟢), due dates (extendable any time), one or more assignees and one or more categories. The task is mirrored into every related channel and all copies stay in sync.
 - **📊 `/category_info`.** Open tasks, priorities, bugs, imminent deadlines and per-user load, shown as jump links to the task messages.
 - **🔑 Credentials vault.** Paste messy logins or API keys. The bot reposts them in a clean format. Regex-based, no AI API needed.
@@ -80,16 +80,57 @@ OpenAI
 AI-123504-9b3f...  AI KEY
 ```
 
-becomes (second example)
+or a server login (IP, password, optional username)
+
+```
+windows server per compilare
+159.159.16.200
+myPassw0rd
+```
+
+The named list becomes
 
 > ### Credentials OpenAI
 >
 > **Api Key - Access Token:** 123504-b6d4...
 > **Api Key - AI KEY:** AI-123504-9b3f...
 
-(A login needs a website plus email/username and password, or an API key. Incomplete messages are rejected with a hint.)
+and the server login becomes
+
+> ### Credentials 159.159.16.200 server
+> **IP:** 159.159.16.200
+> **Username:** Administrator
+> **Password:** myPassw0rd
+
+A login needs a website plus email/username and password, or an API key. A server needs an IP plus a password, and the username defaults to `Administrator`. Incomplete messages are rejected with a hint.
+
+## ✏️ Task reactions
+
+| Reaction | Action |
+|---|---|
+| ⏳ / ✅ / ❌ | Doing / done / discarded (purple / green / grey) |
+| 🐛 | Toggle bug flag |
+| 📌 | Toggle important (gold card, pinned) |
+| 📝 | Edit the task text (opens an *Edit text* button and a pop-up) |
+| 👁️ | Show/hide status, priority, due date, categories and assignees |
+| ⚙️ | Settings panel: priority, due date, assignees, subcategories |
+| 🗑️ | Delete the task everywhere |
 
 ## ⚙️ Configuration
+
+**Task style** (`TASK_FORMAT` in `.env`):
+
+- `webhook` (default): a rich embed card with colours, header tags and a footer.
+- `plain`: a lightweight text message. Same reactions and pop-ups. Mentions never ping.
+
+| State | Plain message |
+|---|---|
+| doing | `- @whosifrago analizzalo, vedi se ti trovi con questo report` |
+| done / discarded | `✅ @whosifrago analizzalo…` / `❌ @whosifrago analizzalo…` |
+| bug / important | an extra first line: `**[BUG] 🐛 **` / `**[IMPORTANT] ⚠️ **` |
+| 👁️ details | a `[Data]` and `[Details]` block (status, priority, due date, category, assignees, **Assigned by:** as a plain name, no tag) appended below |
+
+Discord limits plain messages to 2000 characters, so longer text is cut when displayed. After changing `TASK_FORMAT` and restarting, existing tasks switch format the next time they are updated.
 
 See [`.env.example`](.env.example). Data lives in a single SQLite file (`DB_PATH`, default `./data/discoforge.db`). Back it up if you care about your tasks.
 

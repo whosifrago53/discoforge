@@ -68,12 +68,55 @@ function parseNamedList(lines) {
   return { status: 'ok', fields: { keys }, text: render(name, body) };
 }
 
+const IPV4_RE = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+const SERVER_LABEL_RE = /^(?:\p{L}+\s+)?(user(?:name)?|login|pass(?:word)?|pwd)\s*[:=]\s*(.+)$/iu;
+const DEFAULT_SERVER_USER = 'Administrator';
+
+/**
+ * Server logins: an IPv4 address (a trailing /CIDR is dropped), an optional username (default Administrator)
+ * and a password, labeled ("Root password: x") or as a lone unlabeled token line.
+ * Returns null when the message doesn't look like server credentials.
+ */
+function parseServer(lines) {
+  const ip = [...lines.join('\n').matchAll(IPV4_RE)].map((m) => m[0]).find((a) => a.split('.').every((o) => +o <= 255));
+  if (!ip) return null;
+
+  const f = {};
+  const used = new Set();
+  lines.forEach((line, i) => {
+    const m = line.match(SERVER_LABEL_RE);
+    if (!m) return;
+    const field = /^(pass|pwd)/i.test(m[1]) ? 'password' : 'username';
+    if (!f[field]) { f[field] = m[2].trim(); used.add(i); }
+  });
+  if (!f.password) {
+    const lone = lines.find((l, i) => !used.has(i) && l && !/\s/.test(l) && !new RegExp(IPV4_RE.source).test(l));
+    if (lone) f.password = lone;
+  }
+
+  if (!f.password) return f.username || CRED_WORDS.test(lines.join(' ')) ? { status: 'incomplete', fields: f } : null;
+  return {
+    status: 'ok',
+    fields: { ip, ...f },
+    text: [
+      `> ### Credentials ${ip} server`,
+      `> **IP:** ${ip}`,
+      `> **Username:** ${f.username || DEFAULT_SERVER_USER}`,
+      `> **Password:** ${f.password}`,
+    ].join('\n'),
+  };
+}
+
 /** @returns {{status:'ok'|'incomplete'|'none', text?:string, fields?:object}} */
 function parseCredentials(content) {
   const raw = (content || '').replace(/```(?:md|markdown)?/gi, '').trim();
   if (!raw) return { status: 'none' };
 
   const lines = raw.split(/\r?\n/).map((l) => l.trim());
+  if (!URL_RE.test(raw) && !EMAIL_RE.test(raw)) {
+    const server = parseServer(lines.filter(Boolean));
+    if (server) return server;
+  }
   if (!URL_RE.test(raw) && !EMAIL_RE.test(raw) && !lines.some((l) => LABEL_RE.test(l))) {
     const named = parseNamedList(lines.filter(Boolean));
     if (named) return named;
